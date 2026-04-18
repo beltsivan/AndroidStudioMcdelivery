@@ -48,6 +48,10 @@ class FoodAdapter(private val list: List<Food>) :
 
             context.startActivity(intent)
         }
+        val density = holder.itemView.context.resources.displayMetrics.density
+        val heightInPx = (210 * density).toInt()
+
+        holder.itemView.layoutParams.height = heightInPx
     }
 
 

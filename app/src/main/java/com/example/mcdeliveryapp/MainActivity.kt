@@ -15,7 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 class MainActivity : AppCompatActivity() {
-    @SuppressLint("MissingInflatedId")
+    @SuppressLint("MissingInflatedId", "WrongViewCast")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -43,6 +43,11 @@ class MainActivity : AppCompatActivity() {
         btnOpenBag.setOnClickListener {
             // Create an Intent to go from this Activity to BagActivity
             val intent = Intent(this, BagActivity::class.java)
+            startActivity(intent)
+        }
+        val btnMenu = findViewById<LinearLayout>(R.id.btnMenu)
+        btnMenu.setOnClickListener {
+            val intent = Intent(this, MenuActivity::class.java)
             startActivity(intent)
         }
 

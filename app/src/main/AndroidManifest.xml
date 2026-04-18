@@ -25,6 +25,8 @@
         <activity
             android:name=".OrderDetailsActivity"
             android:exported="false" />
+        <activity android:name=".MenuActivity" android:exported="false" />
+        <activity android:name=".FoodListActivity" android:exported="false" />
     </application>
 
 </manifest>
