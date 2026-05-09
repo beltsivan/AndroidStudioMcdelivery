@@ -13,18 +13,22 @@
         android:theme="@style/Theme.McDeliveryApp"
         tools:targetApi="31">
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".BagActivity" android:exported="false" />
+        <activity android:name=".SignUpActivity" android:exported="false" />
         <activity
-            android:name=".OrderDetailsActivity"
+            android:name=".MainActivity"
             android:exported="false" />
+        <activity android:name=".BagActivity" android:exported="false" />
+        <activity android:name=".OrderDetailsActivity" android:exported="false" />
+        <activity android:name=".MenuActivity" android:exported="false" />
+        <activity android:name=".OrdersActivity" android:exported="false" />
+        <activity android:name=".CouponsActivity" android:exported="false" />
     </application>
 
 </manifest>

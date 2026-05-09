@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "520878196977",
+    "project_id": "mcdelivery-43362",
+    "storage_bucket": "mcdelivery-43362.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:520878196977:android:ed50927874796681990150",
+        "android_client_info": {
+          "package_name": "com.example.mcdeliveryapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA05Fj9mMx51xLe6KT24cEtNDUSUnss52k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
