@@ -33,7 +33,6 @@ class BagActivity : AppCompatActivity() {
             recyclerBag.visibility = View.VISIBLE
 
             recyclerBag.layoutManager = LinearLayoutManager(this)
-            recyclerBag.adapter = FoodAdapter(CartManager.cartList)
         }
     }
 }

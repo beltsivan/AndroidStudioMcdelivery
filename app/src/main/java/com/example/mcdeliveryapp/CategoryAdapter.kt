@@ -1,22 +1,21 @@
 package com.example.mcdeliveryapp
 
-import android.view.View
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class FoodAdapter(
-    private val list: List<Food>,
-    private val onFoodClick: (Food) -> Unit
-) :
-    RecyclerView.Adapter<FoodAdapter.ViewHolder>() {
+class CategoryAdapter(
+    private val list: List<MenuCategory>,
+    private val onCategoryClick: (MenuCategory) -> Unit
+) : RecyclerView.Adapter<CategoryAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val name = view.findViewById<TextView>(R.id.txtName)
-        val image = view.findViewById<ImageView>(R.id.imgFood)
-        val price = view.findViewById<TextView>(R.id.txtPrice)
+        val name: TextView = view.findViewById(R.id.txtName)
+        val image: ImageView = view.findViewById(R.id.imgFood)
+        val price: TextView = view.findViewById(R.id.txtPrice)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -29,8 +28,7 @@ class FoodAdapter(
         val item = list[position]
 
         holder.name.text = item.name
-        holder.price.visibility = View.VISIBLE
-        holder.price.text = String.format("₱%.2f", item.price)
+        holder.price.visibility = View.GONE
 
         val context = holder.itemView.context
         val resId = context.resources.getIdentifier(item.image, "drawable", context.packageName)
@@ -42,10 +40,8 @@ class FoodAdapter(
             holder.image.contentDescription = null
         }
 
-        holder.itemView.setOnClickListener { onFoodClick(item) }
+        holder.itemView.setOnClickListener { onCategoryClick(item) }
     }
-
 
     override fun getItemCount() = list.size
 }
-

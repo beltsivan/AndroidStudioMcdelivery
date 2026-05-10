@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.gms.common.util.CollectionUtils.listOf
 
@@ -102,6 +104,26 @@ class MainActivity : AppCompatActivity() {
 
         // More — placeholder (no activity yet)
         findViewById<android.widget.LinearLayout>(R.id.navMore).setOnClickListener { /* TODO */ }
+
+        val recyclerView = findViewById<RecyclerView>(R.id.categoryRecycler)
+        recyclerView.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+
+        val list = listOf(
+            Category("zodiacmeals", "zodiacmeals"),
+            Category("groupmeals", "mealsgrp"),
+            Category("chickenfish", "chickenfish"),
+            Category("chickenfish", "chickenfish"),
+            Category("chickenfish", "chickenfish"),
+            Category("chickenfish", "chickenfish"),
+            Category("chickenfish", "chickenfish"),
+            Category("chickenfish", "chickenfish"),
+            Category("chickenfish", "chickenfish"),
+            Category("chickenfish", "chickenfish")
+        )
+
+        recyclerView.adapter = AdapterCat(list)
+
     }
 
     // Create one dot ImageView per banner slide
@@ -149,4 +171,6 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         bannerHandler.postDelayed(bannerRunnable, 3000)
     }
+
+
 }

@@ -154,14 +154,15 @@
             </FrameLayout>
 
             <!-- GREETING -->
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
                 android:text="Good Morning Ivan!"
-                android:textStyle="bold"
-                android:textSize="32sp"
                 android:textColor="#000"
-                android:layout_marginStart="16dp"/>
+                android:textSize="32sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -290,41 +291,15 @@
                 android:layout_marginTop="4dp"/>
 
             <!-- MENU ICONS -->
-            <HorizontalScrollView
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/categoryRecycler"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="horizontal"
                 android:scrollbars="none"
-                android:layout_marginTop="20dp"
-                android:paddingBottom="20dp">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:layout_width="90dp"
-                        android:layout_height="90dp"
-                        android:layout_marginStart="16dp"/>
-
-                    <ImageView
-                        android:layout_width="90dp"
-                        android:layout_height="90dp"
-                        android:layout_marginStart="20dp"/>
-
-                    <ImageView
-                        android:layout_width="90dp"
-                        android:layout_height="90dp"
-                        android:layout_marginStart="20dp"/>
-
-                    <ImageView
-                        android:layout_width="90dp"
-                        android:layout_height="90dp"
-                        android:layout_marginStart="20dp"
-                        android:layout_marginEnd="16dp"/>
-                </LinearLayout>
-
-            </HorizontalScrollView>
+                android:paddingStart="8dp"
+                android:layout_margin="16dp"
+                />
 
         </LinearLayout>
 

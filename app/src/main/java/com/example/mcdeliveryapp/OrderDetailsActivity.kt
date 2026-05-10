@@ -8,7 +8,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
-
 class OrderDetailsActivity : AppCompatActivity() {
 
     // Variable to keep track of the quantity
@@ -38,11 +37,19 @@ class OrderDetailsActivity : AppCompatActivity() {
 
         val foodName = intent.getStringExtra("FOOD_NAME")
         basePrice = intent.getDoubleExtra("FOOD_PRICE", 0.0)
-        val foodImage = intent.getIntExtra("FOOD_IMAGE", 0)
+        val foodImage = intent.getStringExtra("FOOD_IMAGE") ?: ""
 
 
         txtName.text = foodName
-        imgDetail.setImageResource(foodImage)
+        
+        // Load image by resource name string
+        val resId = resources.getIdentifier(foodImage, "drawable", packageName)
+        if (resId != 0) {
+            imgDetail.setImageResource(resId)
+        } else {
+            imgDetail.setImageResource(R.drawable.burgermenu)
+        }
+        
         updatePriceDisplay(txtPrice)
 
 
@@ -64,7 +71,7 @@ class OrderDetailsActivity : AppCompatActivity() {
 
             val nameToSave = foodName ?: "Unknown Food"
             val addedFood = Food(
-                id = (0..1000).random(), // Simple random ID
+                id = java.util.UUID.randomUUID().toString(), // Using UUID for string ID
                 name = "$quantity x $nameToSave",
                 price = basePrice * quantity,
                 image = foodImage
