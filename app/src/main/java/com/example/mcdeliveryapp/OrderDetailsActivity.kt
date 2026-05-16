@@ -35,21 +35,16 @@ class OrderDetailsActivity : AppCompatActivity() {
         val btnMinus = findViewById<ImageView>(R.id.btnDecrease) // Your - icon
         val btnAddBag = findViewById<Button>(R.id.btnOrderNow)
 
+        val foodId = intent.getStringExtra("FOOD_ID") ?: ""
         val foodName = intent.getStringExtra("FOOD_NAME")
         basePrice = intent.getDoubleExtra("FOOD_PRICE", 0.0)
         val foodImage = intent.getStringExtra("FOOD_IMAGE") ?: ""
-
+        val foodCategoryId = intent.getStringExtra("FOOD_CATEGORY_ID") ?: ""
+        val foodOrder = intent.getIntExtra("FOOD_ORDER", 0)
 
         txtName.text = foodName
-        
-        // Load image by resource name string
-        val resId = resources.getIdentifier(foodImage, "drawable", packageName)
-        if (resId != 0) {
-            imgDetail.setImageResource(resId)
-        } else {
-            imgDetail.setImageResource(R.drawable.burgermenu)
-        }
-        
+
+        loadImage(imgDetail, foodImage)
         updatePriceDisplay(txtPrice)
 
 
@@ -71,10 +66,12 @@ class OrderDetailsActivity : AppCompatActivity() {
 
             val nameToSave = foodName ?: "Unknown Food"
             val addedFood = Food(
-                id = java.util.UUID.randomUUID().toString(), // Using UUID for string ID
+                id = foodId,
                 name = "$quantity x $nameToSave",
                 price = basePrice * quantity,
-                image = foodImage
+                image = foodImage,
+                categoryId = foodCategoryId,
+                order = foodOrder
             )
             CartManager.cartList.add(addedFood)
             Toast.makeText(this, "Added to bag!", Toast.LENGTH_SHORT).show()

@@ -30,15 +30,8 @@ class CategoryAdapter(
         holder.name.text = item.name
         holder.price.visibility = View.GONE
 
-        val context = holder.itemView.context
-        val resId = context.resources.getIdentifier(item.image, "drawable", context.packageName)
-        if (resId != 0) {
-            holder.image.setImageResource(resId)
-            holder.image.contentDescription = item.name
-        } else {
-            holder.image.setImageDrawable(null)
-            holder.image.contentDescription = null
-        }
+        loadImage(holder.image, item.image)
+        holder.image.contentDescription = item.name
 
         holder.itemView.setOnClickListener { onCategoryClick(item) }
     }

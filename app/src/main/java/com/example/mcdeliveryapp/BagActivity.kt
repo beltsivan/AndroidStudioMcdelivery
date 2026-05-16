@@ -21,7 +21,6 @@ class BagActivity : AppCompatActivity() {
             finish()
         }
 
-
         val layoutEmpty = findViewById<LinearLayout>(R.id.layoutEmpty)
         val recyclerBag = findViewById<RecyclerView>(R.id.recyclerBag)
 
@@ -33,6 +32,7 @@ class BagActivity : AppCompatActivity() {
             recyclerBag.visibility = View.VISIBLE
 
             recyclerBag.layoutManager = LinearLayoutManager(this)
+            recyclerBag.adapter = BagAdapter(CartManager.cartList)
         }
     }
 }

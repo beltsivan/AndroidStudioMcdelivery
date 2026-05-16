@@ -6,10 +6,12 @@ data class Food(
     val price: Double = 0.0,
     val image: String = "",
     val categoryId: String = "",
+    val order: Int = 0
 )
 
 data class MenuCategory(
     val id: String = "",
     val name: String = "",
     val image: String = "",
+    val order: Int = 0
 )

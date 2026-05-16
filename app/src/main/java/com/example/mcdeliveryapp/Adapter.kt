@@ -32,15 +32,8 @@ class FoodAdapter(
         holder.price.visibility = View.VISIBLE
         holder.price.text = String.format("₱%.2f", item.price)
 
-        val context = holder.itemView.context
-        val resId = context.resources.getIdentifier(item.image, "drawable", context.packageName)
-        if (resId != 0) {
-            holder.image.setImageResource(resId)
-            holder.image.contentDescription = item.name
-        } else {
-            holder.image.setImageDrawable(null)
-            holder.image.contentDescription = null
-        }
+        loadImage(holder.image, item.image)
+        holder.image.contentDescription = item.name
 
         holder.itemView.setOnClickListener { onFoodClick(item) }
     }
