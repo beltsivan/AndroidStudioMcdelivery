@@ -54,7 +54,7 @@
         <ImageView
             android:layout_width="90dp"
             android:layout_height="90dp"
-            android:src="@drawable/logo" />
+            android:src="@drawable/mclogo" />
 
         <TextView
             android:layout_width="wrap_content"

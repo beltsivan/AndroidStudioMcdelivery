@@ -96,7 +96,10 @@
                 android:layout_weight="1"
                 android:orientation="vertical"
                 android:gravity="center">
-                <ImageView android:layout_width="26dp" android:layout_height="26dp" />
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:src="@drawable/offmclogo"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="Home" android:textSize="12sp" />
             </LinearLayout>

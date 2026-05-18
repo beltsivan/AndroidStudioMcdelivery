@@ -149,7 +149,10 @@ class MenuActivity : AppCompatActivity() {
             startActivity(Intent(this, CouponsActivity::class.java))
             finish()
         }
-        findViewById<LinearLayout>(R.id.navMore).setOnClickListener { /* TODO */ }
+        findViewById<LinearLayout>(R.id.navMore).setOnClickListener {
+            startActivity(Intent(this, ProfileActivity::class.java))
+            finish()
+        }
     }
 
     private fun setupBackNavigation() {

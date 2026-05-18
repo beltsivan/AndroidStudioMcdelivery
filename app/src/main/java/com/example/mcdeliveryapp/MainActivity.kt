@@ -5,11 +5,14 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -17,6 +20,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : AppCompatActivity() {
@@ -92,7 +96,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, CouponsActivity::class.java))
             finish()
         }
-        findViewById<LinearLayout>(R.id.navMore).setOnClickListener { /* TODO */ }
+        findViewById<LinearLayout>(R.id.navMore).setOnClickListener {
+            startActivity(Intent(this, ProfileActivity::class.java))
+            finish()
+        }
 
         db = FirebaseFirestore.getInstance()
         categoryRecycler = findViewById(R.id.categoryRecycler)
@@ -100,6 +107,118 @@ class MainActivity : AppCompatActivity() {
         categoryFoodsContainer = findViewById(R.id.categoryFoodsContainer)
 
         fetchData()
+        checkBranch()
+    }
+
+    private fun checkBranch() {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        val txtCompanyName = findViewById<TextView>(R.id.txtCompanyName)
+
+        db.collection("users").document(user.uid).get()
+            .addOnSuccessListener { doc ->
+                val branchAddress = doc.getString("branchAddress")
+                val branchName = doc.getString("branchName")
+                if (!branchAddress.isNullOrEmpty()) {
+                    txtCompanyName.text = branchAddress
+                    txtCompanyName.setOnClickListener { promptBranchSelection() }
+                } else if (!branchName.isNullOrEmpty()) {
+                    txtCompanyName.text = branchName
+                    txtCompanyName.setOnClickListener { promptBranchSelection() }
+                } else {
+                    promptBranchSelection()
+                }
+            }
+            .addOnFailureListener { promptBranchSelection() }
+    }
+
+    private fun promptBranchSelection() {
+        db.collection("branches").get()
+            .addOnSuccessListener { result ->
+                val branchNames = mutableListOf<String>()
+                val branchData = mutableListOf<Map<String, Any>>()
+
+                if (result.documents.isEmpty()) {
+                    Toast.makeText(this, "No branches found in Firestore.", Toast.LENGTH_LONG).show()
+                    return@addOnSuccessListener
+                }
+
+                for (doc in result.documents) {
+                    val data = doc.data
+                    val name = doc.getString("name")
+                        ?: doc.getString("branchName")
+                        ?: doc.getString("branch_name")
+                        ?: data?.entries?.firstOrNull { it.value is String }?.value as? String
+                        ?: doc.id
+
+                    val addrMap = (doc.get("address") as? Map<String, Any>)
+                        ?: (doc.get("location") as? Map<String, Any>)
+                        ?: emptyMap()
+                    val street = addrMap["street"] as? String ?: doc.getString("street") ?: ""
+                    val barangay = addrMap["barangay"] as? String ?: doc.getString("barangay") ?: ""
+                    val municipality = addrMap["municipality"] as? String ?: doc.getString("municipality") ?: ""
+                    val province = addrMap["province"] as? String ?: doc.getString("province") ?: ""
+                    val zipCode = addrMap["zipCode"] as? String ?: doc.getString("zipCode") ?: ""
+                    val componentAddress = listOfNotNull(
+                        street.ifEmpty { null },
+                        barangay.ifEmpty { null },
+                        municipality.ifEmpty { null },
+                        province.ifEmpty { null },
+                        zipCode.ifEmpty { null }
+                    ).joinToString(", ")
+                    val singleFieldAddress = doc.getString("address")
+                        ?: doc.getString("branchAddress")
+                        ?: doc.getString("branch_address")
+                        ?: doc.getString("location")
+                        ?: doc.getString("storeAddress")
+                        ?: doc.getString("store_address")
+                        ?: doc.getString("fullAddress")
+                        ?: doc.getString("branchLocation")
+                    val address = componentAddress.ifEmpty { singleFieldAddress ?: "" }
+                    branchNames.add(name)
+                    branchData.add(
+                        mapOf(
+                            "id" to (doc.getString("id") ?: doc.getString("branchId") ?: doc.id),
+                            "name" to name,
+                            "address" to address
+                        )
+                    )
+                }
+
+                AlertDialog.Builder(this)
+                    .setTitle("Select Branch")
+                    .setItems(branchNames.toTypedArray()) { _, which ->
+                        val selected = branchData[which]
+                        saveBranch(selected)
+                    }
+                    .setCancelable(false)
+                    .show()
+            }
+    }
+
+    private fun saveBranch(selected: Map<String, Any>) {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        val branchAddress = selected["address"] as? String ?: ""
+        val branchName = selected["name"] as? String ?: ""
+
+        val displayText = branchAddress.ifEmpty { branchName }
+
+        val updates = hashMapOf<String, Any>(
+            "branchId" to (selected["id"] as? String ?: ""),
+            "branchName" to branchName,
+            "branchAddress" to branchAddress
+        )
+
+        db.collection("users")
+            .document(user.uid)
+            .set(updates, com.google.firebase.firestore.SetOptions.merge())
+            .addOnSuccessListener {
+                val txtCompanyName = findViewById<TextView>(R.id.txtCompanyName)
+                txtCompanyName.text = displayText
+                txtCompanyName.setOnClickListener { promptBranchSelection() }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Failed to save branch: ${e.message}", Toast.LENGTH_LONG).show()
+            }
     }
 
     private fun fetchData() {

@@ -39,7 +39,10 @@ class OrdersActivity : AppCompatActivity() {
             finish()
         }
 
-        // More — placeholder
-        findViewById<LinearLayout>(R.id.navMore).setOnClickListener { /* TODO */ }
+        // More
+        findViewById<LinearLayout>(R.id.navMore).setOnClickListener {
+            startActivity(Intent(this, ProfileActivity::class.java))
+            finish()
+        }
     }
 }
