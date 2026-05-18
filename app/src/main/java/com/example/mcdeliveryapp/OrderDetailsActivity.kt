@@ -63,17 +63,17 @@ class OrderDetailsActivity : AppCompatActivity() {
         }
 
         btnAddBag.setOnClickListener {
-
             val nameToSave = foodName ?: "Unknown Food"
             val addedFood = Food(
                 id = foodId,
-                name = "$quantity x $nameToSave",
-                price = basePrice * quantity,
+                name = nameToSave,
+                price = basePrice,
                 image = foodImage,
                 categoryId = foodCategoryId,
-                order = foodOrder
+                order = foodOrder,
+                quantity = quantity
             )
-            CartManager.cartList.add(addedFood)
+            CartManager.addItem(addedFood)
             Toast.makeText(this, "Added to bag!", Toast.LENGTH_SHORT).show()
             finish()
         }
