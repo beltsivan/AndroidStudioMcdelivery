@@ -20,6 +20,9 @@ class OrderAdapter(
         val txtDeliveryAddress: TextView = view.findViewById(R.id.txtDeliveryAddress)
         val txtPaymentMethod: TextView = view.findViewById(R.id.txtPaymentMethod)
         val txtOrderSubtotal: TextView = view.findViewById(R.id.txtOrderSubtotal)
+        val layoutOrderDiscount: View = view.findViewById(R.id.layoutOrderDiscount)
+        val txtOrderDiscountLabel: TextView = view.findViewById(R.id.txtOrderDiscountLabel)
+        val txtOrderDiscount: TextView = view.findViewById(R.id.txtOrderDiscount)
         val txtOrderDeliveryFee: TextView = view.findViewById(R.id.txtOrderDeliveryFee)
         val txtOrderTotal: TextView = view.findViewById(R.id.txtOrderTotal)
     }
@@ -88,6 +91,17 @@ class OrderAdapter(
         val total = (order["total"] as? Double) ?: 0.0
 
         holder.txtOrderSubtotal.text = String.format("\u20B1%.2f", subtotal)
+
+        val couponCode = order["couponCode"] as? String
+        val discount = (order["discountAmount"] as? Double) ?: 0.0
+        if (couponCode != null && discount > 0) {
+            holder.txtOrderDiscountLabel.text = "Discount ($couponCode)"
+            holder.txtOrderDiscount.text = String.format("- \u20B1%.2f", discount)
+            holder.layoutOrderDiscount.visibility = View.VISIBLE
+        } else {
+            holder.layoutOrderDiscount.visibility = View.GONE
+        }
+
         holder.txtOrderDeliveryFee.text = String.format("\u20B1%.2f", deliveryFee)
         holder.txtOrderTotal.text = String.format("\u20B1%.2f", total)
     }

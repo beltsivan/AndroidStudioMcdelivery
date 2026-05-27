@@ -145,6 +145,49 @@
                 android:textColor="#000" />
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/layoutDiscount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textColor="#2E7D32" />
+
+            <TextView
+                android:id="@+id/txtDiscount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="#2E7D32" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txtCouponLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="14sp"
+            android:textColor="#2E7D32"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnApplyCoupon"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="4dp"
+            android:backgroundTint="#FFF3E0"
+            android:text="Apply Coupon"
+            android:textColor="#E65100"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
@@ -166,24 +209,50 @@
                 android:textStyle="bold"
                 android:textColor="#000" />
 
-            <TextView
-                android:id="@+id/txtTotal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="₱0.00"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="#D32F2F" />
+        <TextView
+            android:id="@+id/txtTotal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="₱0.00"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#D32F2F" />
         </LinearLayout>
 
-        <TextView
+        <LinearLayout
+            android:id="@+id/headerPayment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Payment Method"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#000" />
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Payment Method"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#000" />
+
+            <TextView
+                android:id="@+id/txtDropdownArrow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▾"
+                android:textSize="18sp"
+                android:textColor="#666" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/paymentSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
 
         <RadioGroup
             android:id="@+id/radioGroupPayment"
@@ -218,6 +287,7 @@
             android:textColor="#000000"
             android:textStyle="bold"
             android:textSize="16sp" />
+        </LinearLayout>
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

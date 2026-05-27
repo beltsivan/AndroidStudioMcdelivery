@@ -14,7 +14,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 class BagActivity : AppCompatActivity() {
@@ -22,7 +24,10 @@ class BagActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
 
-    @SuppressLint("MissingInflatedId")
+    private var selectedCouponId: String? = null
+    private var selectedCouponCode: String? = null
+    private var discountAmount = 0.0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.view_bag)
@@ -42,19 +47,36 @@ class BagActivity : AppCompatActivity() {
         val radioGroup = findViewById<RadioGroup>(R.id.radioGroupPayment)
         val btnPlaceOrder = findViewById<Button>(R.id.btnPlaceOrder)
 
+        val headerPayment = findViewById<LinearLayout>(R.id.headerPayment)
+        val paymentSection = findViewById<LinearLayout>(R.id.paymentSection)
+        val txtDropdownArrow = findViewById<TextView>(R.id.txtDropdownArrow)
+
+        headerPayment.setOnClickListener {
+            val isVisible = paymentSection.visibility == View.VISIBLE
+            paymentSection.visibility = if (isVisible) View.GONE else View.VISIBLE
+            txtDropdownArrow.text = if (isVisible) "▾" else "▴"
+        }
+
+        val btnApplyCoupon = findViewById<Button>(R.id.btnApplyCoupon)
+        val layoutDiscount = findViewById<LinearLayout>(R.id.layoutDiscount)
+        val txtDiscount = findViewById<TextView>(R.id.txtDiscount)
+        val txtCouponLabel = findViewById<TextView>(R.id.txtCouponLabel)
+
         txtDeliveryFee.text = String.format("\u20B1%.2f", CartManager.DELIVERY_FEE)
 
+        btnApplyCoupon.setOnClickListener { showCouponPicker() }
+
         btnPlaceOrder.setOnClickListener {
-            placeOrder(radioGroup.checkedRadioButtonId)
+            placeOrder(radioGroup.checkedRadioButtonId, btnPlaceOrder, txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
         }
 
         val user = auth.currentUser
         if (user != null) {
             CartManager.loadCartFromFirestore(db, user.uid) {
-                updateBagUi(layoutEmpty, recyclerBag, bottomPanel, txtSubtotal, txtTotal)
+                updateBagUi(layoutEmpty, recyclerBag, bottomPanel, txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
             }
         } else {
-            updateBagUi(layoutEmpty, recyclerBag, bottomPanel, txtSubtotal, txtTotal)
+            updateBagUi(layoutEmpty, recyclerBag, bottomPanel, txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
         }
     }
 
@@ -63,7 +85,10 @@ class BagActivity : AppCompatActivity() {
         recyclerBag: RecyclerView,
         bottomPanel: LinearLayout,
         txtSubtotal: TextView,
-        txtTotal: TextView
+        txtTotal: TextView,
+        layoutDiscount: LinearLayout,
+        txtDiscount: TextView,
+        txtCouponLabel: TextView
     ) {
         if (CartManager.cartList.isEmpty()) {
             layoutEmpty.visibility = View.VISIBLE
@@ -80,8 +105,7 @@ class BagActivity : AppCompatActivity() {
                 onIncrement = { position ->
                     CartManager.incrementQuantity(position)
                     recyclerBag.adapter?.notifyItemChanged(position)
-                    txtSubtotal.text = String.format("\u20B1%.2f", CartManager.getSubtotal())
-                    txtTotal.text = String.format("\u20B1%.2f", CartManager.getTotal())
+                    refreshTotals(txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
                     val user = auth.currentUser
                     if (user != null) CartManager.saveCartToFirestore(db, user.uid)
                 },
@@ -90,26 +114,156 @@ class BagActivity : AppCompatActivity() {
                     if (CartManager.cartList.isEmpty()) {
                         val user = auth.currentUser
                         if (user != null) CartManager.saveCartToFirestore(db, user.uid)
-                        updateBagUi(layoutEmpty, recyclerBag, bottomPanel, txtSubtotal, txtTotal)
+                        updateBagUi(layoutEmpty, recyclerBag, bottomPanel, txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
                     } else {
                         if (wasRemoved) {
                             recyclerBag.adapter?.notifyItemRemoved(position)
                         } else {
                             recyclerBag.adapter?.notifyItemChanged(position)
                         }
-                        txtSubtotal.text = String.format("\u20B1%.2f", CartManager.getSubtotal())
-                        txtTotal.text = String.format("\u20B1%.2f", CartManager.getTotal())
+                        refreshTotals(txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
                         val user = auth.currentUser
                         if (user != null) CartManager.saveCartToFirestore(db, user.uid)
                     }
                 }
             )
-            txtSubtotal.text = String.format("\u20B1%.2f", CartManager.getSubtotal())
-            txtTotal.text = String.format("\u20B1%.2f", CartManager.getTotal())
+            refreshTotals(txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
         }
     }
 
-    private fun placeOrder(checkedRadioId: Int) {
+    private fun refreshTotals(
+        txtSubtotal: TextView,
+        txtTotal: TextView,
+        layoutDiscount: LinearLayout,
+        txtDiscount: TextView,
+        txtCouponLabel: TextView
+    ) {
+        val subtotal = CartManager.getSubtotal()
+        txtSubtotal.text = String.format("\u20B1%.2f", subtotal)
+
+        if (selectedCouponId != null) {
+            txtDiscount.text = String.format("- \u20B1%.2f", discountAmount)
+            layoutDiscount.visibility = View.VISIBLE
+        }
+
+        val total = CartManager.getTotal() - discountAmount
+        txtTotal.text = String.format("\u20B1%.2f", total)
+    }
+
+    private fun showCouponPicker() {
+        val user = auth.currentUser ?: return
+        db.collection("users").document(user.uid).get()
+            .addOnSuccessListener { doc ->
+                val branchId = doc.getString("branchId") ?: return@addOnSuccessListener
+                val subtotal = CartManager.getSubtotal()
+
+                db.collection("coupons")
+                    .whereEqualTo("branchId", branchId)
+                    .whereEqualTo("isActive", true)
+                    .get()
+                    .addOnSuccessListener { result ->
+                        val now = Timestamp.now()
+                        val validCoupons = result.documents.filter { couponDoc ->
+                            val expiresAt = couponDoc.getTimestamp("expiresAt")
+                            val maxUsage = couponDoc.getLong("maxUsage") ?: 0
+                            val usedCount = couponDoc.getLong("usedCount") ?: 0
+                            (expiresAt == null || expiresAt > now) &&
+                            (maxUsage == 0L || usedCount < maxUsage)
+                        }
+
+                        if (validCoupons.isEmpty()) {
+                            Toast.makeText(this, "No available coupons", Toast.LENGTH_SHORT).show()
+                            return@addOnSuccessListener
+                        }
+
+                        val items = validCoupons.map { couponDoc ->
+                            val code = couponDoc.getString("code") ?: "?"
+                            val desc = couponDoc.getString("description") ?: ""
+                            val discountType = couponDoc.getString("discountType") ?: "fixed"
+                            val discountValue = (couponDoc.getDouble("discountValue") ?: couponDoc.getLong("discountValue")?.toDouble()) ?: 0.0
+                            val minOrder = (couponDoc.getDouble("minOrderAmount") ?: couponDoc.getLong("minOrderAmount")?.toDouble()) ?: 0.0
+                            val discountStr = if (discountType == "percentage") "${discountValue.toInt()}%" else "\u20B1${String.format("%.0f", discountValue)}"
+                            val label = "$code — $discountStr off${if (minOrder > 0) " (min. ₱${String.format("%.0f", minOrder)})" else ""}${if (desc.isNotEmpty()) "\n$desc" else ""}"
+                            CouponItem(couponDoc.id, code, discountType, discountValue, minOrder, label)
+                        }
+
+                        val labels = items.map { it.label }.toTypedArray()
+                        AlertDialog.Builder(this)
+                            .setTitle("Select Coupon")
+                            .setItems(labels) { _, which ->
+                                val coupon = items[which]
+                                if (subtotal < coupon.minOrderAmount) {
+                                    Toast.makeText(this, "Minimum order of ₱${String.format("%.0f", coupon.minOrderAmount)} required", Toast.LENGTH_LONG).show()
+                                    return@setItems
+                                }
+                                val computedDiscount = if (coupon.discountType == "percentage") {
+                                    subtotal * coupon.discountValue / 100.0
+                                } else {
+                                    coupon.discountValue
+                                }
+                                discountAmount = if (computedDiscount > subtotal) subtotal else computedDiscount
+                                selectedCouponId = coupon.id
+                                selectedCouponCode = coupon.code
+
+                                val layoutDiscount = findViewById<LinearLayout>(R.id.layoutDiscount)
+                                val txtDiscount = findViewById<TextView>(R.id.txtDiscount)
+                                val txtCouponLabel = findViewById<TextView>(R.id.txtCouponLabel)
+                                val btnApplyCoupon = findViewById<Button>(R.id.btnApplyCoupon)
+                                val txtSubtotal = findViewById<TextView>(R.id.txtSubtotal)
+                                val txtTotal = findViewById<TextView>(R.id.txtTotal)
+
+                                layoutDiscount.visibility = View.VISIBLE
+                                txtDiscount.text = String.format("- \u20B1%.2f", discountAmount)
+                                txtCouponLabel.text = "Coupon: ${coupon.code}"
+                                txtCouponLabel.visibility = View.VISIBLE
+                                btnApplyCoupon.text = "Change Coupon"
+                                refreshTotals(txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
+                            }
+                            .setNegativeButton("Remove Coupon") { _, _ ->
+                                clearCoupon()
+                            }
+                            .show()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(this, "Coupon error: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+            }
+    }
+
+    private fun clearCoupon() {
+        selectedCouponId = null
+        selectedCouponCode = null
+        discountAmount = 0.0
+        val layoutDiscount = findViewById<LinearLayout>(R.id.layoutDiscount)
+        val txtCouponLabel = findViewById<TextView>(R.id.txtCouponLabel)
+        val btnApplyCoupon = findViewById<Button>(R.id.btnApplyCoupon)
+        val txtSubtotal = findViewById<TextView>(R.id.txtSubtotal)
+        val txtTotal = findViewById<TextView>(R.id.txtTotal)
+        layoutDiscount.visibility = View.GONE
+        txtCouponLabel.visibility = View.GONE
+        btnApplyCoupon.text = "Apply Coupon"
+        refreshTotals(txtSubtotal, txtTotal, layoutDiscount, findViewById(R.id.txtDiscount), txtCouponLabel)
+    }
+
+    private data class CouponItem(
+        val id: String,
+        val code: String,
+        val discountType: String,
+        val discountValue: Double,
+        val minOrderAmount: Double,
+        val label: String
+    )
+
+    @SuppressLint("MissingInflatedId")
+    private fun placeOrder(
+        checkedRadioId: Int,
+        btnPlaceOrder: Button,
+        txtSubtotal: TextView,
+        txtTotal: TextView,
+        layoutDiscount: LinearLayout,
+        txtDiscount: TextView,
+        txtCouponLabel: TextView
+    ) {
         val user = auth.currentUser
         if (user == null) {
             Toast.makeText(this, "Please sign in first", Toast.LENGTH_SHORT).show()
@@ -124,7 +278,6 @@ class BagActivity : AppCompatActivity() {
         val paymentMethod =
             if (checkedRadioId == R.id.radioOnline) "Online Payment" else "Cash on Delivery"
 
-        val btnPlaceOrder = findViewById<Button>(R.id.btnPlaceOrder)
         btnPlaceOrder.isEnabled = false
         btnPlaceOrder.text = "Placing Order..."
 
@@ -161,7 +314,7 @@ class BagActivity : AppCompatActivity() {
                 )
 
                 createOrder(user.uid, customerName, contactNumber, deliveryAddress,
-                    branchId, branchName, paymentMethod, btnPlaceOrder)
+                    branchId, branchName, paymentMethod, btnPlaceOrder, txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
             }
             .addOnFailureListener { e ->
                 btnPlaceOrder.isEnabled = true
@@ -189,7 +342,12 @@ class BagActivity : AppCompatActivity() {
         branchId: String,
         branchName: String,
         paymentMethod: String,
-        btnPlaceOrder: Button
+        btnPlaceOrder: Button,
+        txtSubtotal: TextView,
+        txtTotal: TextView,
+        layoutDiscount: LinearLayout,
+        txtDiscount: TextView,
+        txtCouponLabel: TextView
     ) {
         val items = CartManager.cartList.map { food ->
             hashMapOf<String, Any>(
@@ -203,7 +361,7 @@ class BagActivity : AppCompatActivity() {
 
         val subtotal = CartManager.getSubtotal()
         val deliveryFee = CartManager.DELIVERY_FEE
-        val total = CartManager.getTotal()
+        val total = subtotal + deliveryFee - discountAmount
 
         val orderData = hashMapOf<String, Any>(
             "userId" to userId,
@@ -221,9 +379,20 @@ class BagActivity : AppCompatActivity() {
             "createdAt" to com.google.firebase.Timestamp.now()
         )
 
+        if (selectedCouponId != null) {
+            orderData["couponId"] = selectedCouponId!!
+            orderData["couponCode"] = selectedCouponCode!!
+            orderData["discountAmount"] = discountAmount
+        }
+
         db.collection("orders")
             .add(orderData)
             .addOnSuccessListener { docRef ->
+                if (selectedCouponId != null) {
+                    db.collection("coupons").document(selectedCouponId!!)
+                        .update("usedCount", FieldValue.increment(1))
+                }
+
                 CartManager.clearCart()
                 CartManager.saveCartToFirestore(db, userId)
                 btnPlaceOrder.isEnabled = true
@@ -256,6 +425,9 @@ class BagActivity : AppCompatActivity() {
         val bottomPanel = findViewById<LinearLayout>(R.id.bottomPanel)
         val txtSubtotal = findViewById<TextView>(R.id.txtSubtotal)
         val txtTotal = findViewById<TextView>(R.id.txtTotal)
-        updateBagUi(layoutEmpty, recyclerBag, bottomPanel, txtSubtotal, txtTotal)
+        val layoutDiscount = findViewById<LinearLayout>(R.id.layoutDiscount)
+        val txtDiscount = findViewById<TextView>(R.id.txtDiscount)
+        val txtCouponLabel = findViewById<TextView>(R.id.txtCouponLabel)
+        updateBagUi(layoutEmpty, recyclerBag, bottomPanel, txtSubtotal, txtTotal, layoutDiscount, txtDiscount, txtCouponLabel)
     }
 }
