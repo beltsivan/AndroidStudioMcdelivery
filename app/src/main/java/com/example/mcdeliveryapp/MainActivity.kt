@@ -280,7 +280,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadBranchItems() {
         val bid = branchId ?: return
-        if (!dataLoaded) return
 
         db.collection("branchMenuItems")
             .whereEqualTo("branchId", bid)

@@ -2,6 +2,9 @@ package com.example.mcdeliveryapp
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -29,6 +32,7 @@ class MenuActivity : AppCompatActivity() {
     private var categoriesLoaded = false
     private var pendingCategoryId: String? = null
     private var pendingCategoryName: String? = null
+    private var allMenuFoods = listOf<Food>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +44,20 @@ class MenuActivity : AppCompatActivity() {
         pendingCategoryName = intent.getStringExtra("CATEGORY_NAME")
 
         setupMenuRecyclerView()
+
+        val searchFood = findViewById<EditText>(R.id.searchFood)
+        searchFood.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                val query = s?.toString()?.trim() ?: ""
+                if (query.isEmpty()) {
+                    showCategories()
+                } else {
+                    searchFoods(query)
+                }
+            }
+        })
 
         if (branchId.isNotEmpty()) {
             branchLoaded = true
@@ -88,10 +106,12 @@ class MenuActivity : AppCompatActivity() {
                     branchAvail[itemId] = parseBoolean(v)
                 }
                 branchItemsLoaded = true
+                loadAllMenuItems()
                 tryOpenPendingCategory()
             }
             .addOnFailureListener {
                 branchItemsLoaded = true
+                allMenuFoods = emptyList()
                 tryOpenPendingCategory()
             }
     }
@@ -191,6 +211,43 @@ class MenuActivity : AppCompatActivity() {
     private fun showCategories() {
         showingFoods = false
         recyclerMenu.adapter = categoryAdapter
+    }
+
+    private fun loadAllMenuItems() {
+        db.collection("menuItems")
+            .get()
+            .addOnSuccessListener { result ->
+                allMenuFoods = result.documents
+                    .mapNotNull { doc ->
+                        val name = doc.getString("name") ?: return@mapNotNull null
+                        val categoryId = doc.getString("categoryId") ?: return@mapNotNull null
+                        val menuDocId = doc.getString("id") ?: doc.getString("itemId") ?: doc.id
+                        val isAvail = branchAvail[menuDocId] ?: true
+                        Food(
+                            id = menuDocId,
+                            name = name,
+                            price = (doc.getDouble("price") ?: doc.getLong("price")?.toDouble()) ?: 0.0,
+                            image = doc.getString("image") ?: "",
+                            categoryId = categoryId,
+                            order = doc.getLong("order")?.toInt() ?: 0,
+                            isAvailable = isAvail
+                        )
+                    }
+            }
+    }
+
+    private fun searchFoods(query: String) {
+        val results = allMenuFoods.filter {
+            it.name.contains(query, ignoreCase = true)
+        }
+        foodList.clear()
+        foodList.addAll(results)
+        showingFoods = true
+        foodAdapter = FoodAdapter(foodList) { food ->
+            openFoodDetails(food)
+        }
+        recyclerMenu.adapter = foodAdapter
+        foodAdapter.notifyDataSetChanged()
     }
 
     private fun openFoodDetails(food: Food) {
