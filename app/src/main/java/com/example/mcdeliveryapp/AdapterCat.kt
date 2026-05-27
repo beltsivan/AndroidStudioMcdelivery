@@ -7,7 +7,8 @@ import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
 
 class AdapterCat(
-    private val items: List<Category>
+    private val items: List<Category>,
+    private val onCategoryClick: ((Category) -> Unit)? = null
 ) : RecyclerView.Adapter<AdapterCat.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -23,13 +24,8 @@ class AdapterCat(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = items[position]
 
-        val resId = holder.image.context.resources.getIdentifier(
-            item.image,
-            "drawable",
-            holder.image.context.packageName
-        )
-
-        holder.image.setImageResource(resId)
+        loadImage(holder.image, item.image)
+        holder.itemView.setOnClickListener { onCategoryClick?.invoke(item) }
     }
 
     override fun getItemCount() = items.size

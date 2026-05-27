@@ -23,12 +23,14 @@
         <activity android:name=".SignUpActivity" android:exported="false" />
         <activity
             android:name=".MainActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:windowSoftInputMode="stateHidden" />
         <activity android:name=".BagActivity" android:exported="false" />
         <activity android:name=".OrderDetailsActivity" android:exported="false" />
-        <activity android:name=".MenuActivity" android:exported="false" />
+        <activity android:name=".MenuActivity" android:exported="false" android:windowSoftInputMode="adjustNothing|stateHidden" />
         <activity android:name=".OrdersActivity" android:exported="false" />
         <activity android:name=".CouponsActivity" android:exported="false" />
+        <activity android:name=".ProfileActivity" android:exported="false" android:windowSoftInputMode="adjustNothing|stateHidden" />
     </application>
 
 </manifest>

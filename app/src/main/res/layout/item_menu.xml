@@ -5,9 +5,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:background="#F5F5F5"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
 
-    <!-- TOP HEADER -->
     <LinearLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
@@ -23,10 +24,9 @@
             android:text="Menu"
             android:textColor="#000"
             android:textStyle="bold"
-            android:textSize="28sp"/>
+            android:textSize="28sp" />
     </LinearLayout>
 
-    <!-- SEARCH BAR -->
     <androidx.cardview.widget.CardView
         android:id="@+id/searchCard"
         android:layout_width="0dp"
@@ -47,13 +47,11 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="16dp">
-
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/search"
-                app:tint="#757575"/>
-
+                app:tint="#757575" />
             <EditText
                 android:id="@+id/searchFood"
                 android:layout_width="match_parent"
@@ -61,29 +59,23 @@
                 android:background="@android:color/transparent"
                 android:hint="Search for your McDonald's favorites"
                 android:textSize="16sp"
-                android:paddingStart="10dp"/>
+                android:paddingStart="10dp" />
         </LinearLayout>
-
     </androidx.cardview.widget.CardView>
-
-    <!-- RECYCLER VIEW -->
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerMenu"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="12dp"
         android:clipToPadding="false"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:paddingBottom="16dp"
-        app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
-        app:spanCount="2"
         app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/searchCard"
-        tools:listitem="@layout/item_food" />
+        app:layout_constraintTop_toBottomOf="@id/searchCard" />
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomNavigation"
@@ -99,7 +91,6 @@
             android:orientation="horizontal"
             android:gravity="center">
 
-            <!-- HOME -->
             <LinearLayout
                 android:id="@+id/navHome"
                 android:layout_width="0dp"
@@ -107,19 +98,14 @@
                 android:layout_weight="1"
                 android:orientation="vertical"
                 android:gravity="center">
-
                 <ImageView
                     android:layout_width="26dp"
-                    android:layout_height="26dp"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Home"
-                    android:textSize="12sp"/>
+                    android:layout_height="26dp"
+                    android:src="@drawable/offmclogo"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Home" android:textSize="12sp" />
             </LinearLayout>
 
-            <!-- MENU -->
             <LinearLayout
                 android:id="@+id/navMenu"
                 android:layout_width="0dp"
@@ -127,22 +113,13 @@
                 android:layout_weight="1"
                 android:orientation="vertical"
                 android:gravity="center">
-
-                <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/burger"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Menu"
-                    android:textStyle="bold"
-                    android:textColor="#E53935"
-                    android:textSize="12sp"/>
+                <ImageView android:layout_width="26dp" android:layout_height="26dp"
+                    android:src="@drawable/burger" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Menu" android:textStyle="bold"
+                    android:textColor="#E53935" android:textSize="12sp" />
             </LinearLayout>
 
-            <!-- ORDERS -->
             <LinearLayout
                 android:id="@+id/navOrders"
                 android:layout_width="0dp"
@@ -150,20 +127,12 @@
                 android:layout_weight="1"
                 android:orientation="vertical"
                 android:gravity="center">
-
-                <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/order"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Orders"
-                    android:textSize="12sp"/>
+                <ImageView android:layout_width="26dp" android:layout_height="26dp"
+                    android:src="@drawable/order" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Orders" android:textSize="12sp" />
             </LinearLayout>
 
-            <!-- COUPONS -->
             <LinearLayout
                 android:id="@+id/navCoupons"
                 android:layout_width="0dp"
@@ -171,20 +140,12 @@
                 android:layout_weight="1"
                 android:orientation="vertical"
                 android:gravity="center">
-
-                <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/coupon"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Coupons"
-                    android:textSize="12sp"/>
+                <ImageView android:layout_width="26dp" android:layout_height="26dp"
+                    android:src="@drawable/coupon" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Coupons" android:textSize="12sp" />
             </LinearLayout>
 
-            <!-- MORE -->
             <LinearLayout
                 android:id="@+id/navMore"
                 android:layout_width="0dp"
@@ -192,21 +153,13 @@
                 android:layout_weight="1"
                 android:orientation="vertical"
                 android:gravity="center">
-
-                <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/more"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="More"
-                    android:textSize="12sp"/>
+                <ImageView android:layout_width="26dp" android:layout_height="26dp"
+                    android:src="@drawable/user" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="More" android:textSize="12sp" />
             </LinearLayout>
 
         </LinearLayout>
-
     </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,23 +1,21 @@
 package com.example.mcdeliveryapp
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 
 class MenuActivity : AppCompatActivity() {
-
-    private companion object {
-        const val MENU_CATEGORIES_COLLECTION = "menu_categories"
-        const val FOODS_COLLECTION = "foods"
-    }
 
     private lateinit var db: FirebaseFirestore
     private lateinit var recyclerMenu: RecyclerView
@@ -26,17 +24,96 @@ class MenuActivity : AppCompatActivity() {
     private val categoryList = mutableListOf<MenuCategory>()
     private val foodList = mutableListOf<Food>()
     private var showingFoods = false
+    private var branchId = ""
+    private var branchLoaded = false
 
-    @SuppressLint("MissingInflatedId")
+    private val branchAvail = mutableMapOf<String, Boolean>()
+    private var branchItemsLoaded = false
+    private var categoriesLoaded = false
+    private var pendingCategoryId: String? = null
+    private var pendingCategoryName: String? = null
+    private var allMenuFoods = listOf<Food>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.item_menu)
 
         db = FirebaseFirestore.getInstance()
+        branchId = intent.getStringExtra("BRANCH_ID") ?: ""
+        pendingCategoryId = intent.getStringExtra("CATEGORY_ID")
+        pendingCategoryName = intent.getStringExtra("CATEGORY_NAME")
+
         setupMenuRecyclerView()
-        fetchMenuFromFirestore()
+
+        val searchFood = findViewById<EditText>(R.id.searchFood)
+        searchFood.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                val query = s?.toString()?.trim() ?: ""
+                if (query.isEmpty()) {
+                    showCategories()
+                } else {
+                    searchFoods(query)
+                }
+            }
+        })
+
+        if (branchId.isNotEmpty()) {
+            branchLoaded = true
+            fetchCategories()
+            loadBranchAvailability()
+        } else {
+            val user = FirebaseAuth.getInstance().currentUser
+            if (user != null) {
+                db.collection("users").document(user.uid).get()
+                    .addOnSuccessListener { doc ->
+                        branchId = doc.getString("branchId") ?: ""
+                        branchLoaded = true
+                        fetchCategories()
+                        loadBranchAvailability()
+                    }
+                    .addOnFailureListener { fetchCategories(); loadBranchAvailability() }
+            } else {
+                fetchCategories()
+                loadBranchAvailability()
+            }
+        }
+
         setupBottomNav()
         setupBackNavigation()
+    }
+
+    private fun tryOpenPendingCategory() {
+        val catId = pendingCategoryId ?: return
+        if (!branchItemsLoaded || !categoriesLoaded) return
+        val category = categoryList.find { it.id == catId } ?: return
+        pendingCategoryId = null
+        pendingCategoryName = null
+        fetchFoodsForCategory(category)
+    }
+
+    private fun loadBranchAvailability() {
+        if (branchId.isEmpty()) return
+        db.collection("branchMenuItems")
+            .whereEqualTo("branchId", branchId)
+            .get()
+            .addOnSuccessListener { result ->
+                branchAvail.clear()
+                for (doc in result.documents) {
+                    val itemId = doc.getString("menuItemId") ?: doc.getString("menultemid") ?: continue
+                    val v = doc.get("isAvailable") ?: doc.get("is Available") ?: doc.get("available")
+                    branchAvail[itemId] = parseBoolean(v)
+                }
+                branchItemsLoaded = true
+                loadAllMenuItems()
+                tryOpenPendingCategory()
+            }
+            .addOnFailureListener {
+                branchItemsLoaded = true
+                allMenuFoods = emptyList()
+                tryOpenPendingCategory()
+            }
     }
 
     private fun setupMenuRecyclerView() {
@@ -54,113 +131,81 @@ class MenuActivity : AppCompatActivity() {
         recyclerMenu.adapter = categoryAdapter
     }
 
-    private fun fetchMenuFromFirestore() {
-        db.collection(MENU_CATEGORIES_COLLECTION)
+    private fun fetchCategories() {
+        db.collection("categories")
             .get()
             .addOnSuccessListener { result ->
-                val categories = result.documents
-                    .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
-                    .mapNotNull { it.toMenuCategory() }
-                val existingIds = categories.map { it.id }.toSet()
-                val missingDefaultIds = defaultCategories()
-                    .map { it["id"].toString() }
-                    .filterNot { it in existingIds }
-
-                if (missingDefaultIds.isNotEmpty()) {
-                    createMissingMenuCategories(existingIds)
-                    if (categories.isEmpty()) return@addOnSuccessListener
-                }
-
                 categoryList.clear()
-                categoryList.addAll(categories)
+                categoryList.addAll(
+                    result.documents
+                        .filter { it.getBoolean("isArchived") != true }
+                        .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
+                        .mapNotNull { it.toMenuCategory() }
+                )
                 showingFoods = false
                 recyclerMenu.adapter = categoryAdapter
                 categoryAdapter.notifyDataSetChanged()
+                categoriesLoaded = true
+                tryOpenPendingCategory()
+
+                if (categoryList.isEmpty()) {
+                    Toast.makeText(this, "No categories found", Toast.LENGTH_SHORT).show()
+                }
             }
-            .addOnFailureListener { exception ->
-                Toast.makeText(this, "Error fetching menu: ${exception.message}", Toast.LENGTH_SHORT).show()
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
-    private fun createMissingMenuCategories(existingIds: Set<String>) {
-        val missingCategories = defaultCategories().filter { it["id"] !in existingIds }
-        if (missingCategories.isEmpty()) return
-
-        val batch = db.batch()
-        val collection = db.collection(MENU_CATEGORIES_COLLECTION)
-
-        missingCategories.forEach { category ->
-            val documentId = category["id"].toString()
-            batch.set(collection.document(documentId), category)
+    private fun fetchFoodsForCategory(category: MenuCategory) {
+        if (branchId.isEmpty() || !branchItemsLoaded) {
+            Toast.makeText(this, "Loading...", Toast.LENGTH_SHORT).show()
+            return
         }
 
-        batch.commit()
-            .addOnSuccessListener { fetchMenuFromFirestore() }
-            .addOnFailureListener { exception ->
-                Toast.makeText(this, "Error creating categories: ${exception.message}", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun fetchFoodsForCategory(category: MenuCategory, createIfEmpty: Boolean = true) {
-        db.collection(FOODS_COLLECTION)
+        db.collection("menuItems")
             .whereEqualTo("categoryId", category.id)
             .get()
             .addOnSuccessListener { result ->
-                if (result.isEmpty && createIfEmpty) {
-                    createDefaultFoodsForCategory(category) {
-                        fetchFoodsForCategory(category, false)
-                    }
-                    return@addOnSuccessListener
-                }
-
                 foodList.clear()
                 foodList.addAll(
                     result.documents
                         .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
-                        .mapNotNull { it.toFood() }
+                        .mapNotNull { doc ->
+                            val name = doc.getString("name") ?: return@mapNotNull null
+                            val menuDocId = doc.getString("id") ?: doc.getString("itemId") ?: doc.id
+                            val isAvail = branchAvail[menuDocId] ?: true
+                            Food(
+                                id = menuDocId,
+                                name = name,
+                                price = (doc.getDouble("price") ?: doc.getLong("price")?.toDouble()) ?: 0.0,
+                                image = doc.getString("image") ?: "",
+                                categoryId = category.id,
+                                order = doc.getLong("order")?.toInt() ?: 0,
+                                isAvailable = isAvail
+                            )
+                        }
                 )
                 showingFoods = true
+                foodAdapter = FoodAdapter(foodList) { food ->
+                    openFoodDetails(food)
+                }
                 recyclerMenu.adapter = foodAdapter
                 foodAdapter.notifyDataSetChanged()
-
                 if (foodList.isEmpty()) {
-                    Toast.makeText(this, "No foods found for ${category.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "No items in ${category.name}", Toast.LENGTH_SHORT).show()
                 }
             }
-            .addOnFailureListener { exception ->
-                Toast.makeText(this, "Error fetching foods: ${exception.message}", Toast.LENGTH_SHORT).show()
-            }
+            .addOnFailureListener { }
     }
 
-    private fun createDefaultFoodsForCategory(category: MenuCategory, onCreated: () -> Unit) {
-        val foods = defaultCategories().filter { it["categoryId"] == category.id }
-        if (foods.isEmpty()) {
-            onCreated()
-            return
+    private fun parseBoolean(value: Any?): Boolean {
+        return when (value) {
+            is Boolean -> value
+            is String -> value.equals("true", ignoreCase = true)
+            is Number -> value.toInt() != 0
+            else -> true
         }
-
-        val batch = db.batch()
-        val collection = db.collection(FOODS_COLLECTION)
-
-        foods.forEach { food ->
-            val documentId = food["id"].toString()
-            batch.set(collection.document(documentId), food)
-        }
-
-        batch.commit()
-            .addOnSuccessListener { onCreated() }
-            .addOnFailureListener { exception ->
-                Toast.makeText(this, "Error creating foods: ${exception.message}", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun openFoodDetails(food: Food) {
-        val intent = Intent(this, OrderDetailsActivity::class.java).apply {
-            putExtra("FOOD_NAME", food.name)
-            putExtra("FOOD_PRICE", food.price)
-            putExtra("FOOD_IMAGE", food.image)
-        }
-        startActivity(intent)
     }
 
     private fun showCategories() {
@@ -168,71 +213,63 @@ class MenuActivity : AppCompatActivity() {
         recyclerMenu.adapter = categoryAdapter
     }
 
+    private fun loadAllMenuItems() {
+        db.collection("menuItems")
+            .get()
+            .addOnSuccessListener { result ->
+                allMenuFoods = result.documents
+                    .mapNotNull { doc ->
+                        val name = doc.getString("name") ?: return@mapNotNull null
+                        val categoryId = doc.getString("categoryId") ?: return@mapNotNull null
+                        val menuDocId = doc.getString("id") ?: doc.getString("itemId") ?: doc.id
+                        val isAvail = branchAvail[menuDocId] ?: true
+                        Food(
+                            id = menuDocId,
+                            name = name,
+                            price = (doc.getDouble("price") ?: doc.getLong("price")?.toDouble()) ?: 0.0,
+                            image = doc.getString("image") ?: "",
+                            categoryId = categoryId,
+                            order = doc.getLong("order")?.toInt() ?: 0,
+                            isAvailable = isAvail
+                        )
+                    }
+            }
+    }
+
+    private fun searchFoods(query: String) {
+        val results = allMenuFoods.filter {
+            it.name.contains(query, ignoreCase = true)
+        }
+        foodList.clear()
+        foodList.addAll(results)
+        showingFoods = true
+        foodAdapter = FoodAdapter(foodList) { food ->
+            openFoodDetails(food)
+        }
+        recyclerMenu.adapter = foodAdapter
+        foodAdapter.notifyDataSetChanged()
+    }
+
+    private fun openFoodDetails(food: Food) {
+        val intent = Intent(this, OrderDetailsActivity::class.java).apply {
+            putExtra("FOOD_ID", food.id)
+            putExtra("FOOD_NAME", food.name)
+            putExtra("FOOD_PRICE", food.price)
+            putExtra("FOOD_IMAGE", food.image)
+            putExtra("FOOD_CATEGORY_ID", food.categoryId)
+            putExtra("FOOD_ORDER", food.order)
+            putExtra("FOOD_AVAILABLE", food.isAvailable)
+        }
+        startActivity(intent)
+    }
+
     private fun DocumentSnapshot.toMenuCategory(): MenuCategory? {
-        val name = getString("name").orEmpty()
-        val image = getString("image").orEmpty()
-
-        if (name.isBlank() || image.isBlank()) return null
-
+        val name = getString("name") ?: return null
         return MenuCategory(
             id = getString("id") ?: id,
             name = name,
-            image = image
-        )
-    }
-
-    private fun DocumentSnapshot.toFood(): Food? {
-        val name = getString("name").orEmpty()
-        val image = getString("image").orEmpty()
-        val categoryId = getString("categoryId").orEmpty()
-        val price = getDouble("price") ?: getLong("price")?.toDouble() ?: 0.0
-
-        if (name.isBlank() || image.isBlank() || categoryId.isBlank()) return null
-
-        return Food(
-            id = getString("id") ?: id,
-            name = name,
-            price = price,
-            image = image,
-            categoryId = categoryId
-        )
-    }
-
-    private fun defaultCategories(): List<Map<String, Any>> {
-        return listOf(
-            mapOf("id" to "zodiacmeals", "name" to "Zodiac Meals", "image" to "zodiacmeals", "order" to 1),
-            mapOf("id" to "groupmeals", "name" to "Group Meals", "image" to "groupmeals", "order" to 2),
-            mapOf("id" to "featured", "name" to "Featured", "image" to "featured", "order" to 3),
-            mapOf("id" to "chickfish", "name" to "Chicken & Fish", "image" to "chickfish", "order" to 4),
-            mapOf("id" to "burgers", "name" to "Burgers", "image" to "burgers", "order" to 5),
-            mapOf("id" to "spag", "name" to "McSpaghetti", "image" to "spag", "order" to 6),
-            mapOf("id" to "ricebowls", "name" to "Rice Bowls", "image" to "ricebowls", "order" to 7),
-            mapOf("id" to "d&d", "name" to "Desserts & Drinks", "image" to "dd", "order" to 8),
-            mapOf("id" to "cafe", "name" to "McCafe", "image" to "cafe", "order" to 9),
-            mapOf("id" to "f&e", "name" to "Fries & Extras", "image" to "fe", "order" to 10),
-            mapOf("id" to "happymeal", "name" to "Happy Meal", "image" to "happymeal", "order" to 11),
-            mapOf("id" to "sulit", "name" to "Sulit-Busog Meals", "image" to "burgermenu", "order" to 12),
-            mapOf("id" to "mcdopb", "name" to "Mcdo Party Box", "image" to "mcdopb", "order" to 13)
-        )
-    }
-
-
-
-    private fun foodMap(
-        id: String,
-        categoryId: String,
-        name: String,
-        image: String,
-        price: Double,
-        order: Int
-    ): Map<String, Any> {
-        return mapOf(
-            "id" to id,
-            "categoryId" to categoryId,
-            "name" to name,
-            "image" to image,
-            "price" to price,
-            "order" to order
+            image = getString("image") ?: "",
+            order = getLong("order")?.toInt() ?: 0
         )
     }
 
@@ -242,20 +279,19 @@ class MenuActivity : AppCompatActivity() {
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             startActivity(intent)
         }
-
         findViewById<LinearLayout>(R.id.navMenu).setOnClickListener { showCategories() }
-
         findViewById<LinearLayout>(R.id.navOrders).setOnClickListener {
             startActivity(Intent(this, OrdersActivity::class.java))
             finish()
         }
-
         findViewById<LinearLayout>(R.id.navCoupons).setOnClickListener {
             startActivity(Intent(this, CouponsActivity::class.java))
             finish()
         }
-
-        findViewById<LinearLayout>(R.id.navMore).setOnClickListener { /* TODO */ }
+        findViewById<LinearLayout>(R.id.navMore).setOnClickListener {
+            startActivity(Intent(this, ProfileActivity::class.java))
+            finish()
+        }
     }
 
     private fun setupBackNavigation() {

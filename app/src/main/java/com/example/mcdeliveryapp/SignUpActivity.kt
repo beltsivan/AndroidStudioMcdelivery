@@ -106,26 +106,20 @@ class SignUpActivity : AppCompatActivity() {
                                 .document(user.uid)
                                 .set(userDoc)
                                 .addOnSuccessListener {
-                                    Toast.makeText(
-                                        this,
-                                        "Account created! Welcome, $fullName!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    val intent = Intent(this, MainActivity::class.java)
+                                    auth.signOut()
+                                    Toast.makeText(this, "Account created! Please log in.", Toast.LENGTH_SHORT).show()
+                                    val intent = Intent(this, LoginActivity::class.java)
                                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                     startActivity(intent)
+                                    finish()
                                 }
                                 .addOnFailureListener {
-                                    // Auth account was created fine; Firestore write failed.
-                                    // Still let the user in — the doc can be written later.
-                                    Toast.makeText(
-                                        this,
-                                        "Account created! Welcome, $fullName!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    val intent = Intent(this, MainActivity::class.java)
+                                    auth.signOut()
+                                    Toast.makeText(this, "Account created! Please log in.", Toast.LENGTH_SHORT).show()
+                                    val intent = Intent(this, LoginActivity::class.java)
                                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                     startActivity(intent)
+                                    finish()
                                 }
                         }
 
