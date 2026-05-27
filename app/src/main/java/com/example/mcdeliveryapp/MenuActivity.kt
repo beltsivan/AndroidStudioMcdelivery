@@ -26,6 +26,9 @@ class MenuActivity : AppCompatActivity() {
 
     private val branchAvail = mutableMapOf<String, Boolean>()
     private var branchItemsLoaded = false
+    private var categoriesLoaded = false
+    private var pendingCategoryId: String? = null
+    private var pendingCategoryName: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +36,8 @@ class MenuActivity : AppCompatActivity() {
 
         db = FirebaseFirestore.getInstance()
         branchId = intent.getStringExtra("BRANCH_ID") ?: ""
+        pendingCategoryId = intent.getStringExtra("CATEGORY_ID")
+        pendingCategoryName = intent.getStringExtra("CATEGORY_NAME")
 
         setupMenuRecyclerView()
 
@@ -61,6 +66,15 @@ class MenuActivity : AppCompatActivity() {
         setupBackNavigation()
     }
 
+    private fun tryOpenPendingCategory() {
+        val catId = pendingCategoryId ?: return
+        if (!branchItemsLoaded || !categoriesLoaded) return
+        val category = categoryList.find { it.id == catId } ?: return
+        pendingCategoryId = null
+        pendingCategoryName = null
+        fetchFoodsForCategory(category)
+    }
+
     private fun loadBranchAvailability() {
         if (branchId.isEmpty()) return
         db.collection("branchMenuItems")
@@ -74,8 +88,12 @@ class MenuActivity : AppCompatActivity() {
                     branchAvail[itemId] = parseBoolean(v)
                 }
                 branchItemsLoaded = true
+                tryOpenPendingCategory()
             }
-            .addOnFailureListener { branchItemsLoaded = true }
+            .addOnFailureListener {
+                branchItemsLoaded = true
+                tryOpenPendingCategory()
+            }
     }
 
     private fun setupMenuRecyclerView() {
@@ -100,12 +118,15 @@ class MenuActivity : AppCompatActivity() {
                 categoryList.clear()
                 categoryList.addAll(
                     result.documents
+                        .filter { it.getBoolean("isArchived") != true }
                         .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
                         .mapNotNull { it.toMenuCategory() }
                 )
                 showingFoods = false
                 recyclerMenu.adapter = categoryAdapter
                 categoryAdapter.notifyDataSetChanged()
+                categoriesLoaded = true
+                tryOpenPendingCategory()
 
                 if (categoryList.isEmpty()) {
                     Toast.makeText(this, "No categories found", Toast.LENGTH_SHORT).show()

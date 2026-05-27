@@ -39,16 +39,13 @@ class OrderAdapter(
         val status = order["status"] as? String ?: "Pending"
         holder.txtOrderStatus.text = status
 
-        val statusColor = when (status) {
-            "Pending" -> android.graphics.Color.parseColor("#FF9800")
-            "Confirmed" -> android.graphics.Color.parseColor("#2196F3")
-            "Preparing" -> android.graphics.Color.parseColor("#9C27B0")
-            "Delivered" -> android.graphics.Color.parseColor("#4CAF50")
-            "Cancelled" -> android.graphics.Color.parseColor("#F44336")
-            else -> android.graphics.Color.parseColor("#FF9800")
+        if (status == "Delivered") {
+            holder.txtOrderStatus.setTextColor(android.graphics.Color.WHITE)
+            holder.txtOrderStatus.setBackgroundColor(android.graphics.Color.parseColor("#4CAF50"))
+        } else {
+            holder.txtOrderStatus.setTextColor(android.graphics.Color.parseColor("#FF9800"))
+            holder.txtOrderStatus.background = null
         }
-        holder.txtOrderStatus.setTextColor(android.graphics.Color.WHITE)
-        holder.txtOrderStatus.setBackgroundColor(statusColor)
 
         val timestamp = order["createdAt"] as? com.google.firebase.Timestamp
         if (timestamp != null) {

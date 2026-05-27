@@ -245,6 +245,7 @@ class MainActivity : AppCompatActivity() {
             .get()
             .addOnSuccessListener { catResult ->
                 val categories = catResult.documents
+                    .filter { it.getBoolean("isArchived") != true }
                     .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
                     .mapNotNull { doc ->
                         val name = doc.getString("name") ?: return@mapNotNull null
@@ -261,6 +262,8 @@ class MainActivity : AppCompatActivity() {
                 categoryRecycler.adapter = AdapterCat(categoryList) { category ->
                     startActivity(Intent(this, MenuActivity::class.java).apply {
                         putExtra("BRANCH_ID", branchId ?: "")
+                        putExtra("CATEGORY_ID", category.id)
+                        putExtra("CATEGORY_NAME", category.name)
                     })
                     finish()
                 }
