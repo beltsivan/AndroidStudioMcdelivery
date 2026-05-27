@@ -289,10 +289,6 @@ class MainActivity : AppCompatActivity() {
                     branchAvail[itemId] = getAvail(branchDoc)
                 }
 
-                if (branchAvail.isEmpty()) {
-                    Toast.makeText(this, "No menuItemId found in branchMenuItems docs", Toast.LENGTH_LONG).show()
-                }
-
                 db.collection("menuItems")
                     .get()
                     .addOnSuccessListener { menuResult ->
@@ -344,7 +340,9 @@ class MainActivity : AppCompatActivity() {
     private fun buildCategorySections(categories: List<Category>, allFoods: List<Food>, bid: String) {
         categoryFoodsContainer.removeAllViews()
 
-        for (cat in categories) {
+        val allowed = categories.filter { it.name == "Featured" || it.name == "Sulit-Busog Meals" }
+
+        for (cat in allowed) {
             val foods = allFoods.filter { it.categoryId == cat.id }
             if (foods.isEmpty()) continue
 
@@ -377,10 +375,9 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     overlay.visibility = View.VISIBLE
                     txtUnavailable.visibility = View.VISIBLE
-                    foodName.setTextColor(0xFFFF0000.toInt())
-                    foodName.text = food.name + " (UNAVAILABLE)"
-                    foodPrice.text = "UNAVAILABLE"
-                    foodPrice.setTextColor(0xFFFF0000.toInt())
+                    foodName.setTextColor(0xFF000000.toInt())
+                    foodName.text = food.name
+                    foodPrice.text = String.format("\u20B1%.2f", food.price)
                     cardView.setOnClickListener(null)
                 }
                 foodRowContainer.addView(cardView)

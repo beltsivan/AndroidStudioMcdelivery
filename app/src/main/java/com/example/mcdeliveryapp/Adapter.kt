@@ -46,7 +46,7 @@ class FoodAdapter(
             holder.overlay.visibility = View.VISIBLE
             holder.txtUnavailable.visibility = View.VISIBLE
             holder.itemView.alpha = 1.0f
-            holder.itemView.setBackgroundColor(0xFFFF4444.toInt())
+            holder.itemView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
             holder.itemView.setOnClickListener(null)
         }
     }

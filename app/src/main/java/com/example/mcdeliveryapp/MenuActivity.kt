@@ -74,7 +74,6 @@ class MenuActivity : AppCompatActivity() {
                     branchAvail[itemId] = parseBoolean(v)
                 }
                 branchItemsLoaded = true
-                Toast.makeText(this, "branchAvail: ${branchAvail.size} items", Toast.LENGTH_LONG).show()
             }
             .addOnFailureListener { branchItemsLoaded = true }
     }
