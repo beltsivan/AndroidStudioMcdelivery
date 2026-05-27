@@ -286,14 +286,29 @@ class MainActivity : AppCompatActivity() {
             .get()
             .addOnSuccessListener { branchResult ->
                 val branchAvail = mutableMapOf<String, Boolean>()
+                var skipped = 0
                 for (branchDoc in branchResult.documents) {
-                    val itemId = branchDoc.getString("menuItemId") ?: branchDoc.getString("menultemid") ?: continue
+                    val itemId = branchDoc.getString("menuItemId") ?: branchDoc.getString("menultemid")
+                    if (itemId == null) {
+                        skipped++
+                        val allKeys = branchDoc.data?.keys?.joinToString(",") ?: ""
+                        if (skipped == 1) {
+                            Toast.makeText(this, "branchMenuItem fields: $allKeys", Toast.LENGTH_LONG).show()
+                        }
+                        continue
+                    }
                     branchAvail[itemId] = getAvail(branchDoc)
                 }
 
                 db.collection("menuItems")
                     .get()
                     .addOnSuccessListener { menuResult ->
+                        var matched = 0
+                        val firstMenuId = menuResult.documents.firstOrNull()?.let {
+                            it.getString("id") ?: it.getString("itemId") ?: it.id
+                        } ?: ""
+                        val availKeys = branchAvail.keys.take(3).joinToString(",")
+
                         loadedFoods = menuResult.documents
                             .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
                             .mapNotNull { doc ->
@@ -301,6 +316,7 @@ class MainActivity : AppCompatActivity() {
                                 val categoryId = doc.getString("categoryId") ?: return@mapNotNull null
                                 val menuDocId = doc.getString("id") ?: doc.getString("itemId") ?: doc.id
                                 val isAvail = branchAvail[menuDocId] ?: true
+                                if (branchAvail.containsKey(menuDocId)) matched++
                                 Food(
                                     id = menuDocId,
                                     name = name,
@@ -312,6 +328,7 @@ class MainActivity : AppCompatActivity() {
                                 )
                             }
                         itemsLoaded = true
+                        Toast.makeText(this, "branchMenuItems:${branchResult.size()} skipped:$skipped menuItems:${menuResult.size()} matched:$matched firstMenuId:$firstMenuId availKeys:$availKeys", Toast.LENGTH_LONG).show()
                         renderHomeScreen()
                     }
                     .addOnFailureListener { itemsLoaded = true; renderHomeScreen() }
