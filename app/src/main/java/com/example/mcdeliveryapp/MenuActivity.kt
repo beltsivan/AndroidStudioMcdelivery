@@ -8,6 +8,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -20,16 +21,62 @@ class MenuActivity : AppCompatActivity() {
     private val categoryList = mutableListOf<MenuCategory>()
     private val foodList = mutableListOf<Food>()
     private var showingFoods = false
+    private var branchId = ""
+    private var branchLoaded = false
+
+    private val branchAvail = mutableMapOf<String, Boolean>()
+    private var branchItemsLoaded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.item_menu)
 
         db = FirebaseFirestore.getInstance()
+        branchId = intent.getStringExtra("BRANCH_ID") ?: ""
+
         setupMenuRecyclerView()
-        fetchCategories()
+
+        if (branchId.isNotEmpty()) {
+            branchLoaded = true
+            fetchCategories()
+            loadBranchAvailability()
+        } else {
+            val user = FirebaseAuth.getInstance().currentUser
+            if (user != null) {
+                db.collection("users").document(user.uid).get()
+                    .addOnSuccessListener { doc ->
+                        branchId = doc.getString("branchId") ?: ""
+                        branchLoaded = true
+                        fetchCategories()
+                        loadBranchAvailability()
+                    }
+                    .addOnFailureListener { fetchCategories(); loadBranchAvailability() }
+            } else {
+                fetchCategories()
+                loadBranchAvailability()
+            }
+        }
+
         setupBottomNav()
         setupBackNavigation()
+    }
+
+    private fun loadBranchAvailability() {
+        if (branchId.isEmpty()) return
+        db.collection("branchMenuItems")
+            .whereEqualTo("branchId", branchId)
+            .get()
+            .addOnSuccessListener { result ->
+                branchAvail.clear()
+                for (doc in result.documents) {
+                    val itemId = doc.getString("menuItemId") ?: doc.getString("menultemid") ?: continue
+                    val v = doc.get("isAvailable") ?: doc.get("is Available") ?: doc.get("available")
+                    branchAvail[itemId] = parseBoolean(v)
+                }
+                branchItemsLoaded = true
+                Toast.makeText(this, "branchAvail: ${branchAvail.size} items", Toast.LENGTH_LONG).show()
+            }
+            .addOnFailureListener { branchItemsLoaded = true }
     }
 
     private fun setupMenuRecyclerView() {
@@ -71,6 +118,11 @@ class MenuActivity : AppCompatActivity() {
     }
 
     private fun fetchFoodsForCategory(category: MenuCategory) {
+        if (branchId.isEmpty() || !branchItemsLoaded) {
+            Toast.makeText(this, "Loading...", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         db.collection("menuItems")
             .whereEqualTo("categoryId", category.id)
             .get()
@@ -79,19 +131,41 @@ class MenuActivity : AppCompatActivity() {
                 foodList.addAll(
                     result.documents
                         .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
-                        .mapNotNull { it.toFood() }
+                        .mapNotNull { doc ->
+                            val name = doc.getString("name") ?: return@mapNotNull null
+                            val menuDocId = doc.getString("id") ?: doc.getString("itemId") ?: doc.id
+                            val isAvail = branchAvail[menuDocId] ?: true
+                            Food(
+                                id = menuDocId,
+                                name = name,
+                                price = (doc.getDouble("price") ?: doc.getLong("price")?.toDouble()) ?: 0.0,
+                                image = doc.getString("image") ?: "",
+                                categoryId = category.id,
+                                order = doc.getLong("order")?.toInt() ?: 0,
+                                isAvailable = isAvail
+                            )
+                        }
                 )
                 showingFoods = true
+                foodAdapter = FoodAdapter(foodList) { food ->
+                    openFoodDetails(food)
+                }
                 recyclerMenu.adapter = foodAdapter
                 foodAdapter.notifyDataSetChanged()
-
                 if (foodList.isEmpty()) {
                     Toast.makeText(this, "No items in ${category.name}", Toast.LENGTH_SHORT).show()
                 }
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+            .addOnFailureListener { }
+    }
+
+    private fun parseBoolean(value: Any?): Boolean {
+        return when (value) {
+            is Boolean -> value
+            is String -> value.equals("true", ignoreCase = true)
+            is Number -> value.toInt() != 0
+            else -> true
+        }
     }
 
     private fun showCategories() {
@@ -107,6 +181,7 @@ class MenuActivity : AppCompatActivity() {
             putExtra("FOOD_IMAGE", food.image)
             putExtra("FOOD_CATEGORY_ID", food.categoryId)
             putExtra("FOOD_ORDER", food.order)
+            putExtra("FOOD_AVAILABLE", food.isAvailable)
         }
         startActivity(intent)
     }
@@ -117,19 +192,6 @@ class MenuActivity : AppCompatActivity() {
             id = getString("id") ?: id,
             name = name,
             image = getString("image") ?: "",
-            order = getLong("order")?.toInt() ?: 0
-        )
-    }
-
-    private fun DocumentSnapshot.toFood(): Food? {
-        val name = getString("name") ?: return null
-        val categoryId = getString("categoryId") ?: return null
-        return Food(
-            id = getString("id") ?: id,
-            name = name,
-            price = (getDouble("price") ?: getLong("price")?.toDouble()) ?: 0.0,
-            image = getString("image") ?: "",
-            categoryId = categoryId,
             order = getLong("order")?.toInt() ?: 0
         )
     }

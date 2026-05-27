@@ -10,13 +10,14 @@ import androidx.recyclerview.widget.RecyclerView
 class FoodAdapter(
     private val list: List<Food>,
     private val onFoodClick: (Food) -> Unit
-) :
-    RecyclerView.Adapter<FoodAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<FoodAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val name = view.findViewById<TextView>(R.id.txtName)
         val image = view.findViewById<ImageView>(R.id.imgFood)
         val price = view.findViewById<TextView>(R.id.txtPrice)
+        val overlay = view.findViewById<View>(R.id.unavailableOverlay)
+        val txtUnavailable = view.findViewById<TextView>(R.id.txtUnavailable)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -30,15 +31,25 @@ class FoodAdapter(
 
         holder.name.text = item.name
         holder.price.visibility = View.VISIBLE
-        holder.price.text = String.format("₱%.2f", item.price)
+        holder.price.text = String.format("\u20B1%.2f", item.price)
 
         loadImage(holder.image, item.image)
         holder.image.contentDescription = item.name
 
-        holder.itemView.setOnClickListener { onFoodClick(item) }
+        if (item.isAvailable) {
+            holder.overlay.visibility = View.GONE
+            holder.txtUnavailable.visibility = View.GONE
+            holder.itemView.alpha = 1.0f
+            holder.itemView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            holder.itemView.setOnClickListener { onFoodClick(item) }
+        } else {
+            holder.overlay.visibility = View.VISIBLE
+            holder.txtUnavailable.visibility = View.VISIBLE
+            holder.itemView.alpha = 1.0f
+            holder.itemView.setBackgroundColor(0xFFFF4444.toInt())
+            holder.itemView.setOnClickListener(null)
+        }
     }
-
 
     override fun getItemCount() = list.size
 }
-

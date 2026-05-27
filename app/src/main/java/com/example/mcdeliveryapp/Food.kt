@@ -7,7 +7,8 @@ data class Food(
     val image: String = "",
     val categoryId: String = "",
     val order: Int = 0,
-    val quantity: Int = 1
+    val quantity: Int = 1,
+    val isAvailable: Boolean = true
 )
 
 data class MenuCategory(

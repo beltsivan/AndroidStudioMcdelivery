@@ -110,12 +110,64 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Subtotal"
+                android:textSize="16sp"
+                android:textColor="#666" />
+
+            <TextView
+                android:id="@+id/txtSubtotal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="₱0.00"
+                android:textSize="16sp"
+                android:textColor="#000" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Delivery Fee"
+                android:textSize="16sp"
+                android:textColor="#666" />
+
+            <TextView
+                android:id="@+id/txtDeliveryFee"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="₱49.00"
+                android:textSize="16sp"
+                android:textColor="#000" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E0E0"
+            android:layout_marginTop="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Total"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="#000" />
 
             <TextView
-                android:id="@+id/txtSubtotal"
+                android:id="@+id/txtTotal"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="₱0.00"
@@ -124,13 +176,45 @@
                 android:textColor="#D32F2F" />
         </LinearLayout>
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Payment Method"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#000" />
+
+        <RadioGroup
+            android:id="@+id/radioGroupPayment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/radioCOD"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Cash on Delivery"
+                android:textSize="14sp"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/radioOnline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Online Payment"
+                android:textSize="14sp" />
+        </RadioGroup>
+
         <Button
-            android:id="@+id/btnCheckout"
+            android:id="@+id/btnPlaceOrder"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:backgroundTint="#FFBC0D"
-            android:text="Proceed to Checkout"
+            android:text="Place Order"
             android:textColor="#000000"
             android:textStyle="bold"
             android:textSize="16sp" />

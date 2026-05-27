@@ -108,6 +108,20 @@
         </LinearLayout>
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/txtUnavailableMsg"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Item is currently not available"
+        android:textColor="#D32F2F"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btnOrderNow"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="8dp"/>
+
     <Button
         android:id="@+id/btnOrderNow"
         android:layout_width="0dp"

@@ -1,14 +1,22 @@
 package com.example.mcdeliveryapp
 
 import android.annotation.SuppressLint
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class OrderDetailsActivity : AppCompatActivity() {
+
+    private lateinit var auth: FirebaseAuth
+    private lateinit var db: FirebaseFirestore
 
     // Variable to keep track of the quantity
     private var quantity = 1
@@ -18,6 +26,9 @@ class OrderDetailsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.item_full_bag)
+
+        auth = FirebaseAuth.getInstance()
+        db = FirebaseFirestore.getInstance()
 
         val btnBack = findViewById<ImageView>(R.id.btnBack1)
 
@@ -41,10 +52,26 @@ class OrderDetailsActivity : AppCompatActivity() {
         val foodImage = intent.getStringExtra("FOOD_IMAGE") ?: ""
         val foodCategoryId = intent.getStringExtra("FOOD_CATEGORY_ID") ?: ""
         val foodOrder = intent.getIntExtra("FOOD_ORDER", 0)
+        val foodAvailable = intent.getBooleanExtra("FOOD_AVAILABLE", true)
 
         txtName.text = foodName
 
         loadImage(imgDetail, foodImage)
+
+        val txtUnavailableMsg = findViewById<TextView>(R.id.txtUnavailableMsg)
+
+        if (!foodAvailable) {
+            txtUnavailableMsg.visibility = View.VISIBLE
+            btnAddBag.isEnabled = false
+            btnAddBag.alpha = 0.5f
+            btnAddBag.text = "Not Available"
+            btnPlus.visibility = View.GONE
+            btnMinus.visibility = View.GONE
+            txtQty.visibility = View.GONE
+            val cm = ColorMatrix().apply { setSaturation(0f) }
+            imgDetail.colorFilter = ColorMatrixColorFilter(cm)
+        }
+
         updatePriceDisplay(txtPrice)
 
 
@@ -74,6 +101,10 @@ class OrderDetailsActivity : AppCompatActivity() {
                 quantity = quantity
             )
             CartManager.addItem(addedFood)
+            val user = auth.currentUser
+            if (user != null) {
+                CartManager.saveCartToFirestore(db, user.uid)
+            }
             Toast.makeText(this, "Added to bag!", Toast.LENGTH_SHORT).show()
             finish()
         }

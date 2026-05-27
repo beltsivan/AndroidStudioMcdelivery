@@ -53,6 +53,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var categoryRecycler: RecyclerView
     private lateinit var categoryFoodsContainer: LinearLayout
     private val categoryList = mutableListOf<Category>()
+    private var branchId: String? = null
+    private var loadedCategories = listOf<Category>()
+    private var loadedFoods = listOf<Food>()
+    private var dataLoaded = false
+    private var itemsLoaded = false
+    private var branchLoaded = false
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,7 +91,9 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<LinearLayout>(R.id.navHome).setOnClickListener { /* active */ }
         findViewById<LinearLayout>(R.id.navMenu).setOnClickListener {
-            startActivity(Intent(this, MenuActivity::class.java))
+            startActivity(Intent(this, MenuActivity::class.java).apply {
+                putExtra("BRANCH_ID", branchId ?: "")
+            })
             finish()
         }
         findViewById<LinearLayout>(R.id.navOrders).setOnClickListener {
@@ -106,7 +114,7 @@ class MainActivity : AppCompatActivity() {
         categoryRecycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         categoryFoodsContainer = findViewById(R.id.categoryFoodsContainer)
 
-        fetchData()
+        fetchCategories()
         checkBranch()
     }
 
@@ -116,8 +124,14 @@ class MainActivity : AppCompatActivity() {
 
         db.collection("users").document(user.uid).get()
             .addOnSuccessListener { doc ->
+                val bid = doc.getString("branchId")
                 val branchAddress = doc.getString("branchAddress")
                 val branchName = doc.getString("branchName")
+                if (!bid.isNullOrEmpty()) {
+                    branchId = bid
+                    branchLoaded = true
+                    loadBranchItems()
+                }
                 if (!branchAddress.isNullOrEmpty()) {
                     txtCompanyName.text = branchAddress
                     txtCompanyName.setOnClickListener { promptBranchSelection() }
@@ -197,13 +211,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveBranch(selected: Map<String, Any>) {
         val user = FirebaseAuth.getInstance().currentUser ?: return
+        val bid = selected["id"] as? String ?: ""
         val branchAddress = selected["address"] as? String ?: ""
         val branchName = selected["name"] as? String ?: ""
 
         val displayText = branchAddress.ifEmpty { branchName }
 
+        branchId = bid
+        branchLoaded = true
+        loadBranchItems()
+
         val updates = hashMapOf<String, Any>(
-            "branchId" to (selected["id"] as? String ?: ""),
+            "branchId" to bid,
             "branchName" to branchName,
             "branchAddress" to branchAddress
         )
@@ -221,7 +240,7 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-    private fun fetchData() {
+    private fun fetchCategories() {
         db.collection("categories")
             .get()
             .addOnSuccessListener { catResult ->
@@ -236,38 +255,93 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
 
+                loadedCategories = categories
                 categoryList.clear()
                 categoryList.addAll(categories)
                 categoryRecycler.adapter = AdapterCat(categoryList) { category ->
-                    val intent = Intent(this, MenuActivity::class.java)
-                    startActivity(intent)
+                    startActivity(Intent(this, MenuActivity::class.java).apply {
+                        putExtra("BRANCH_ID", branchId ?: "")
+                    })
                     finish()
+                }
+
+                dataLoaded = true
+                renderHomeScreen()
+            }
+    }
+
+    private fun getAvail(doc: com.google.firebase.firestore.DocumentSnapshot): Boolean {
+        val v = doc.get("isAvailable") ?: doc.get("is Available") ?: doc.get("available")
+        return parseBoolean(v)
+    }
+
+    private fun loadBranchItems() {
+        val bid = branchId ?: return
+        if (!dataLoaded) return
+
+        db.collection("branchMenuItems")
+            .whereEqualTo("branchId", bid)
+            .get()
+            .addOnSuccessListener { branchResult ->
+                val branchAvail = mutableMapOf<String, Boolean>()
+                for (branchDoc in branchResult.documents) {
+                    val itemId = branchDoc.getString("menuItemId") ?: branchDoc.getString("menultemid") ?: continue
+                    branchAvail[itemId] = getAvail(branchDoc)
+                }
+
+                if (branchAvail.isEmpty()) {
+                    Toast.makeText(this, "No menuItemId found in branchMenuItems docs", Toast.LENGTH_LONG).show()
                 }
 
                 db.collection("menuItems")
                     .get()
-                    .addOnSuccessListener { foodResult ->
-                        val allFoods = foodResult.documents
+                    .addOnSuccessListener { menuResult ->
+                        loadedFoods = menuResult.documents
                             .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
                             .mapNotNull { doc ->
                                 val name = doc.getString("name") ?: return@mapNotNull null
                                 val categoryId = doc.getString("categoryId") ?: return@mapNotNull null
+                                val menuDocId = doc.getString("id") ?: doc.getString("itemId") ?: doc.id
+                                val isAvail = branchAvail[menuDocId] ?: true
                                 Food(
-                                    id = doc.getString("id") ?: doc.id,
+                                    id = menuDocId,
                                     name = name,
                                     price = (doc.getDouble("price") ?: doc.getLong("price")?.toDouble()) ?: 0.0,
                                     image = doc.getString("image") ?: "",
                                     categoryId = categoryId,
-                                    order = doc.getLong("order")?.toInt() ?: 0
+                                    order = doc.getLong("order")?.toInt() ?: 0,
+                                    isAvailable = isAvail
                                 )
                             }
-
-                        buildCategorySections(categories, allFoods)
+                        itemsLoaded = true
+                        renderHomeScreen()
                     }
+                    .addOnFailureListener { itemsLoaded = true; renderHomeScreen() }
+            }
+            .addOnFailureListener {
+                itemsLoaded = true
+                loadedFoods = emptyList()
+                renderHomeScreen()
             }
     }
 
-    private fun buildCategorySections(categories: List<Category>, allFoods: List<Food>) {
+    private fun parseBoolean(value: Any?): Boolean {
+        return when (value) {
+            is Boolean -> value
+            is String -> value.equals("true", ignoreCase = true)
+            is Number -> value.toInt() != 0
+            else -> true
+        }
+    }
+
+    private fun renderHomeScreen() {
+        if (!dataLoaded || !branchLoaded || !itemsLoaded) return
+
+        val bid = branchId ?: ""
+        buildCategorySections(loadedCategories, loadedFoods, bid)
+    }
+
+    private fun buildCategorySections(categories: List<Category>, allFoods: List<Food>, bid: String) {
         categoryFoodsContainer.removeAllViews()
 
         for (cat in categories) {
@@ -285,13 +359,30 @@ class MainActivity : AppCompatActivity() {
                 val foodImage = cardView.findViewById<ImageView>(R.id.foodImage)
                 val foodName = cardView.findViewById<TextView>(R.id.foodName)
                 val foodPrice = cardView.findViewById<TextView>(R.id.foodPrice)
+                val overlay = cardView.findViewById<View>(R.id.overlayUnavailable)
+                val txtUnavailable = cardView.findViewById<TextView>(R.id.txtUnavailableLabel)
 
                 foodName.text = food.name
                 foodPrice.text = String.format("\u20B1%.2f", food.price)
 
                 loadImage(foodImage, food.image)
 
-                cardView.setOnClickListener { openFoodDetails(food) }
+                if (food.isAvailable) {
+                    overlay.visibility = View.GONE
+                    txtUnavailable.visibility = View.GONE
+                    foodName.setTextColor(0xFF000000.toInt())
+                    foodName.text = food.name
+                    foodPrice.text = String.format("\u20B1%.2f", food.price)
+                    cardView.setOnClickListener { openFoodDetails(food) }
+                } else {
+                    overlay.visibility = View.VISIBLE
+                    txtUnavailable.visibility = View.VISIBLE
+                    foodName.setTextColor(0xFFFF0000.toInt())
+                    foodName.text = food.name + " (UNAVAILABLE)"
+                    foodPrice.text = "UNAVAILABLE"
+                    foodPrice.setTextColor(0xFFFF0000.toInt())
+                    cardView.setOnClickListener(null)
+                }
                 foodRowContainer.addView(cardView)
             }
 
@@ -307,6 +398,7 @@ class MainActivity : AppCompatActivity() {
             putExtra("FOOD_IMAGE", food.image)
             putExtra("FOOD_CATEGORY_ID", food.categoryId)
             putExtra("FOOD_ORDER", food.order)
+            putExtra("FOOD_AVAILABLE", food.isAvailable)
         }
         startActivity(intent)
     }
